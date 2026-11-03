@@ -1,0 +1,23 @@
+# PiKVM / KVMD endpoint config for the pykvm-rest-api agent skill.
+#
+# Copy this file to `pykvm.local` (same directory) and fill in your KVM's
+# base URL and credentials — no trailing slash on the URL, no /api path.
+# pykvm.local is gitignored and never ships.
+#
+# Alternatively set the PYKVM_URL / PYKVM_USER / PYKVM_PASSWORD environment
+# variables (they take priority), or create ~/.config/pykvm/endpoint with the
+# same content.
+#
+# TLS: PiKVM usually ships a self-signed cert. Either set PYKVM_INSECURE=true
+# (skip verification) or point PYKVM_CA at a CA bundle that signs your KVM.
+#
+# Example:
+#   PYKVM_URL=https://your-kvm-host
+#   PYKVM_USER=admin
+#   PYKVM_PASSWORD=changeme
+#   PYKVM_INSECURE=true
+
+PYKVM_URL=https://your-kvm-host
+PYKVM_USER=admin
+PYKVM_PASSWORD=changeme
+PYKVM_INSECURE=true
