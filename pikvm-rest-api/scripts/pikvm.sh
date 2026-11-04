@@ -15,7 +15,9 @@ PASSWORD=""
 INSECURE=0
 CA_BUNDLE=""
 TIMEOUT=30
+BINARY_OUT_FILE=""
 RESP_FILE="$(mktemp "${TMPDIR:-/tmp}/pikvm-resp.XXXXXX")"
+# Only clean up the temp response file; a file the user asked for via --out is kept.
 trap 'rm -f "$RESP_FILE"' EXIT
 
 usage() {
@@ -31,6 +33,8 @@ Global options (before the command):
   --insecure         Skip TLS certificate verification (self-signed cert).
   --ca PATH          Trust a specific CA bundle for the KVM's cert.
   --timeout SECS     Request timeout in seconds (default: 30).
+  --out FILE         For 'raw' binary responses: save the bytes to FILE instead
+                     of a temporary file (the temp file is deleted on exit).
   -h, --help         Show this help.
 
 Base URL / credential resolution (first match wins per value):
@@ -46,7 +50,8 @@ Commands:
   shortcut KEY [KEY...]         press a key chord, e.g. shortcut MetaLeft KeyA
   type TEXT                     type text (POST /api/hid/print)
   click [BUTTON]                mouse click; BUTTON in left|right|middle (default left)
-  move X Y                      absolute mouse move to pixel X,Y
+  move X Y                      absolute mouse move in native KVMD coords
+                                  (X,Y in -32768..32767; 0,0 = screen center)
   wheel DX DY                   scroll the wheel by delta
   power-on | power-off | power-reset
                                 ATX power control (POST /api/atx/power)
@@ -70,6 +75,7 @@ while [[ $# -gt 0 ]]; do
     --insecure) INSECURE=1; shift ;;
     --ca)       CA_BUNDLE="${2:?--ca requires a path}"; shift 2 ;;
     --timeout)  TIMEOUT="${2:?--timeout requires a number}"; shift 2 ;;
+    --out)      BINARY_OUT_FILE="${2:?--out requires a path}"; shift 2 ;;
     -h|--help)  usage; exit 0 ;;
     -*)         die "unknown global option: $1 (see --help)" 2 ;;
     *)          break ;;
@@ -156,12 +162,14 @@ print_json() {
 }
 
 # do_request METHOD PATH [QUERY] [EXTRA CURL ARGS...]
+# The QUERY arg is consumed if *supplied* (even when empty); only a non-empty
+# query is appended to the URL. Extra args after QUERY are curl flags.
 do_request() {
   local method="$1" path="$2" query="${3:-}"
   shift 2
-  if [[ $# -gt 0 && -n "$query" ]]; then shift; fi
+  if [[ $# -gt 0 ]]; then shift; fi
   local url="${BASE_URL}${path}"
-  [[ -n "$query" ]] && url="${url}?${query}"
+  if [[ -n "$query" ]]; then url="${url}?${query}"; fi
   CURL_ARGS=()
   CURL_ARGS+=(-sS --max-time "$TIMEOUT" -A 'agent-skill-pikvm-rest-api/1.0' -o "$RESP_FILE" -w '%{http_code} %{content_type}')
   auth_curl_args
@@ -204,7 +212,9 @@ case "$COMMAND" in
     text="$*"
     limit="${#text}"
     [[ "$limit" -lt 1 ]] && limit=1024
-    do_request POST /api/hid/print "limit=$limit" -H 'Content-Type: text/plain' --data-binary "$text"
+    # --data-raw (not --data-binary): a leading '@' in the text is sent
+    # literally instead of being interpreted by curl as a file to upload.
+    do_request POST /api/hid/print "limit=$limit" -H 'Content-Type: text/plain' --data-raw "$text"
     echo "typed ${#text} characters" >&2
     ;;
 
@@ -266,7 +276,13 @@ case "$COMMAND" in
     for kv in "$@"; do query="${query:+$query&}$kv"; done
     do_request "$method" "$path" "$query"
     case "${CONTENT_TYPE:-}" in
-      image/*) echo "saved binary to: $RESP_FILE" ;;
+      image/*|application/octet-stream)
+        # Binary response: RESP_FILE is deleted on exit, so copy it to a file
+        # the caller keeps. --out is honored; otherwise a fresh temp file.
+        out="${BINARY_OUT_FILE:-$(mktemp "${TMPDIR:-/tmp}/pikvm-bin.XXXXXX")}"
+        cp "$RESP_FILE" "$out"
+        echo "saved binary to: $out ($(wc -c < "$out" | tr -d ' ') bytes)"
+        ;;
       *)       print_json ;;
     esac
     ;;

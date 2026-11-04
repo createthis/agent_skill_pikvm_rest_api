@@ -1,0 +1,5 @@
+# Keep this skill's local credential file out of version control.
+# This file travels with the installed skill (cp -r ... into a repo), so it
+# protects a local config even when the parent repo's .gitignore is not copied.
+/pikvm.local
+/scripts/pikvm.local
