@@ -1,6 +1,6 @@
-# pykvm-rest-api — an Agent Skill
+# pikvm-rest-api — an Agent Skill
 
-An [Agent Skills spec](https://agentskills.io/specification) skill that gives AI agents control over a PiKVM / KVMD (PyKVM Mini) hardware KVM through its REST API: read system and power state, send real keyboard/mouse input, type text, capture the screen, and control ATX power — with a zero-dependency bash + curl client.
+An [Agent Skills spec](https://agentskills.io/specification) skill that gives AI agents control over a PiKVM / KVMD (PiKVM Mini) hardware KVM through its REST API: read system and power state, send real keyboard/mouse input, type text, capture the screen, and control ATX power — with a zero-dependency bash + curl client.
 
 ## Why
 
@@ -13,21 +13,21 @@ The skill in one sentence: **drive the machine behind your PiKVM via the KVMD RE
 The skill is fully parameterized and ships **no URL and no credentials of any kind**. Everything is resolved at runtime, first match wins:
 
 1. `--base-url` / `--user` / `--password` flags (one-off)
-2. `PYKVM_URL` / `PYKVM_USER` / `PYKVM_PASSWORD` environment variables
-3. `pykvm.local` next to the skill (gitignored; see `pykvm.example`), or `~/.config/pykvm/endpoint`
+2. `PIKVM_URL` / `PIKVM_USER` / `PIKVM_PASSWORD` environment variables
+3. `pikvm.local` next to the skill (gitignored; see `pikvm.example`), or `~/.config/pikvm/endpoint`
 
-TLS: PiKVM usually ships a self-signed cert. Set `PYKVM_INSECURE=true` (or `--insecure`) to skip verification, or point `PYKVM_CA` at a CA bundle.
+TLS: PiKVM usually ships a self-signed cert. Set `PIKVM_INSECURE=true` (or `--insecure`) to skip verification, or point `PIKVM_CA` at a CA bundle.
 
 That is what keeps the repo public-safe: your KVM's internal DNS name and password live in your env vars or your gitignored local file, and the public copy works for anyone who points it at their own PiKVM.
 
 ## Contents
 
 ```
-pykvm-rest-api/
+pikvm-rest-api/
 ├── SKILL.md              # the skill (frontmatter + endpoint resolution + field notes)
-├── pykvm.example         # committed config template (copy to pykvm.local)
+├── pikvm.example         # committed config template (copy to pikvm.local)
 ├── scripts/
-│   └── pykvm.sh          # zero-dependency bash + curl KVMD REST API client
+│   └── pikvm.sh          # zero-dependency bash + curl KVMD REST API client
 └── references/
     └── KEYMAP.md         # full table of accepted key names (KVMD web keymap)
 ```
@@ -39,31 +39,31 @@ pykvm-rest-api/
 ### Project scope (applies to one repo)
 
 ```bash
-cp -r pykvm-rest-api /path/to/your/repo/.agents/skills/
+cp -r pikvm-rest-api /path/to/your/repo/.agents/skills/
 ```
 
 ### User scope (applies to all your repos)
 
 ```bash
-cp -r pykvm-rest-api ~/.agents/skills/
+cp -r pikvm-rest-api ~/.agents/skills/
 ```
 
-Then start a new agent conversation so the skill catalog is rebuilt. In OpenHands you can also verify under **Customize > Skills** — `pykvm-rest-api` should appear and be enabled.
+Then start a new agent conversation so the skill catalog is rebuilt. In OpenHands you can also verify under **Customize > Skills** — `pikvm-rest-api` should appear and be enabled.
 
 ### Point it at your KVM
 
 ```bash
-export PYKVM_URL=https://your-kvm-host
-export PYKVM_USER=admin
-export PYKVM_PASSWORD='your-password'
-export PYKVM_INSECURE=true        # self-signed cert (the PiKVM default)
+export PIKVM_URL=https://your-kvm-host
+export PIKVM_USER=admin
+export PIKVM_PASSWORD='your-password'
+export PIKVM_INSECURE=true        # self-signed cert (the PiKVM default)
 ```
 
 …or in the skill directory:
 
 ```bash
-cp pykvm-rest-api/pykvm.example pykvm-rest-api/pykvm.local
-# edit PYKVM_URL / PYKVM_USER / PYKVM_PASSWORD
+cp pikvm-rest-api/pikvm.example pikvm-rest-api/pikvm.local
+# edit PIKVM_URL / PIKVM_USER / PIKVM_PASSWORD
 ```
 
 ## The rules (short version)
@@ -77,4 +77,4 @@ cp pykvm-rest-api/pykvm.example pykvm-rest-api/pykvm.local
 
 ## Spec compliance
 
-Valid against the Agent Skills spec: `name` matches the parent directory, lowercase-hyphen naming, required `name` + `description` frontmatter, description ≤ 1024 chars, body well under 500 lines. Optional spec fields used: `compatibility` (requires bash/curl + network) and `metadata` (author, version). No non-spec fields, so the skill is portable to any Agent Skills client. Validate with `skills-ref validate ./pykvm-rest-api`.
+Valid against the Agent Skills spec: `name` matches the parent directory, lowercase-hyphen naming, required `name` + `description` frontmatter, description ≤ 1024 chars, body well under 500 lines. Optional spec fields used: `compatibility` (requires bash/curl + network) and `metadata` (author, version). No non-spec fields, so the skill is portable to any Agent Skills client. Validate with `skills-ref validate ./pikvm-rest-api`.

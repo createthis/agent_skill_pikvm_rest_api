@@ -1,6 +1,6 @@
 ---
-name: pykvm-rest-api
-description: "Control a PiKVM / KVMD (PyKVM Mini) hardware KVM over its REST API — read system/power state, send keyboard and mouse input, type text, take screen snapshots, and control ATX power. Use when a task needs to drive a remote machine through a PiKVM: typing into a target machine, clicking its screen, checking its power or health, grabbing a screen capture, or recovering a locked/unresponsive machine by sending input or power-cycling it. Resolves the KVM's base URL, username, and password at runtime from environment variables or a local config file; nothing is hardcoded in the skill."
+name: pikvm-rest-api
+description: "Control a PiKVM / KVMD (PiKVM Mini) hardware KVM over its REST API — read system/power state, send keyboard and mouse input, type text, take screen snapshots, and control ATX power. Use when a task needs to drive a remote machine through a PiKVM: typing into a target machine, clicking its screen, checking its power or health, grabbing a screen capture, or recovering a locked/unresponsive machine by sending input or power-cycling it. Resolves the KVM's base URL, username, and password at runtime from environment variables or a local config file; nothing is hardcoded in the skill."
 compatibility: "Requires bash and curl (and ideally jq, for pretty output) and network access to a PiKVM/KVMD instance. No other dependencies."
 metadata:
   author: createthis
@@ -16,10 +16,10 @@ Drive a hardware KVM (PiKVM Mini 4 / any KVMD-based device) from the command lin
 Nothing is hardcoded. The base URL, username, and password are resolved at runtime, first match wins per value:
 
 1. `--base-url URL`, `--user USER`, `--password PASS` flags (one-off override)
-2. `PYKVM_URL`, `PYKVM_USER`, `PYKVM_PASSWORD` environment variables
-3. `pykvm.local` in the skill directory (see `pykvm.example`), or `~/.config/pykvm/endpoint`
+2. `PIKVM_URL`, `PIKVM_USER`, `PIKVM_PASSWORD` environment variables
+3. `pikvm.local` in the skill directory (see `pikvm.example`), or `~/.config/pikvm/endpoint`
 
-Extra TLS options (also env-overridable): `PYKVM_INSECURE=true` (or `--insecure`) to skip cert verification for self-signed certs; `PYKVM_CA=/path/bundle` (or `--ca`) to trust a specific CA. `PYKVM_TIMEOUT` is not read — use `--timeout SECS`.
+Extra TLS options (also env-overridable): `PIKVM_INSECURE=true` (or `--insecure`) to skip cert verification for self-signed certs; `PIKVM_CA=/path/bundle` (or `--ca`) to trust a specific CA. `PIKVM_TIMEOUT` is not read — use `--timeout SECS`.
 
 The base URL is the KVM's origin only — e.g. `https://your-kvm-host` — with no trailing slash and no `/api` path. If the script reports "no KVM base URL configured" or "username and password are required", check this machine's AGENTS.md or memory for the KVM's address and pass them via the flags or env vars. There is deliberately **no default instance**: the KVM address and credentials are private to the user's network.
 
@@ -29,41 +29,41 @@ Run the client from the skill directory; relative examples below assume you `cd`
 
 ```bash
 # read-only
-scripts/pykvm.sh info                 # KVM + host system info (KVMD version, platform, uptime, health)
-scripts/pykvm.sh power                # ATX power state (enabled, busy, LED state, available actions)
-scripts/pykvm.sh hid                  # keyboard/mouse state (online, absolute/relative, LED state)
+scripts/pikvm.sh info                 # KVM + host system info (KVMD version, platform, uptime, health)
+scripts/pikvm.sh power                # ATX power state (enabled, busy, LED state, available actions)
+scripts/pikvm.sh hid                  # keyboard/mouse state (online, absolute/relative, LED state)
 
 # input (real events on the target machine)
-scripts/pykvm.sh key Escape                          # tap one key
-scripts/pykvm.sh shortcut MetaLeft KeyA               # press a key chord (⌘A on macOS)
-scripts/pykvm.sh type "echo hello"                    # type text via /api/hid/print
-scripts/pykvm.sh click left                           # mouse click: left | right | middle
-scripts/pykvm.sh move 512 384                         # absolute mouse move to pixel (x, y)
-scripts/pykvm.sh wheel 0 -3                           # scroll wheel by (delta_x, delta_y)
+scripts/pikvm.sh key Escape                          # tap one key
+scripts/pikvm.sh shortcut MetaLeft KeyA               # press a key chord (⌘A on macOS)
+scripts/pikvm.sh type "echo hello"                    # type text via /api/hid/print
+scripts/pikvm.sh click left                           # mouse click: left | right | middle
+scripts/pikvm.sh move 512 384                         # absolute mouse move to pixel (x, y)
+scripts/pikvm.sh wheel 0 -3                           # scroll wheel by (delta_x, delta_y)
 
 # power control
-scripts/pykvm.sh power-on
-scripts/pykvm.sh power-off
-scripts/pykvm.sh power-reset                         # hard reset
+scripts/pikvm.sh power-on
+scripts/pikvm.sh power-off
+scripts/pikvm.sh power-reset                         # hard reset
 
 # screen capture
-scripts/pykvm.sh snapshot /tmp/screen.jpg            # JPEG of the target screen
+scripts/pikvm.sh snapshot /tmp/screen.jpg            # JPEG of the target screen
 
 # generic escape hatch
-scripts/pykvm.sh raw POST /api/hid/reset             # any method + path + query params
+scripts/pikvm.sh raw POST /api/hid/reset             # any method + path + query params
 ```
 
 Override endpoint/creds for a one-off call:
 
 ```bash
-scripts/pykvm.sh --base-url https://your-kvm --user admin --password '...' --insecure info
+scripts/pikvm.sh --base-url https://your-kvm --user admin --password '...' --insecure info
 ```
 
 JSON endpoints print to stdout pretty-printed (when `jq` is available); confirmation messages and errors go to stderr. Non-zero exit codes: `2` usage, `3` not configured, `4` HTTP/network failure.
 
 ## Field notes (hard-won)
 
-- **TLS is usually self-signed.** PiKVM ships a self-signed cert by default, so HTTPS needs `--insecure` (env `PYKVM_INSECURE=true`) unless the user has installed a CA-signed or internal-CA cert (then use `--ca`). If you get an `SSL certificate problem`, this is why — it is expected on a LAN KVM, not a security failure.
+- **TLS is usually self-signed.** PiKVM ships a self-signed cert by default, so HTTPS needs `--insecure` (env `PIKVM_INSECURE=true`) unless the user has installed a CA-signed or internal-CA cert (then use `--ca`). If you get an `SSL certificate problem`, this is why — it is expected on a LAN KVM, not a security failure.
 - **The API uses query params, not a form body.** e.g. `POST /api/hid/events/send_key?key=Escape`, `POST /api/hid/events/send_shortcut?keys=MetaLeft,KeyA`. The only endpoint that takes a body is `POST /api/hid/print` (raw text, with a `?limit=` cap). The client handles this; use `raw` if you hand-roll a request and it 400s.
 - **Key names are the KVMD web keymap, not evdev/X11 names.** `KeyA`…`KeyZ`, `Digit1`…`Digit0`, `Enter`, `Escape`, `Tab`, `Space`, `F1`–`F24`, `MetaLeft`/`MetaRight` (⌘/Super), `ControlLeft`/`ControlRight`, `AltLeft`/`AltRight` (⌥/Option), `ShiftLeft`/`ShiftRight`, `NumpadEnter`, `ArrowUp`… etc. A full table is in [references/KEYMAP.md](references/KEYMAP.md). evdev-style names like `Super_L`, `Meta_L`, or `KEY_A` are **rejected** with a `ValidatorError`.
 - **Shortcuts need modifier+key, comma-joined.** `shortcut MetaLeft KeyV` = ⌘V. Order is press-first, release-reverse, so it reads as a real chord.

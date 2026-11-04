@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pykvm.sh — a zero-dependency (bash + curl) client for the PiKVM / KVMD REST API.
+# pikvm.sh — a zero-dependency (bash + curl) client for the PiKVM / KVMD REST API.
 #
 # The base URL and credentials are resolved at runtime; nothing sensitive is
 # hardcoded. See the usage text for the resolution order.
@@ -15,7 +15,7 @@ PASSWORD=""
 INSECURE=0
 CA_BUNDLE=""
 TIMEOUT=30
-RESP_FILE="$(mktemp "${TMPDIR:-/tmp}/pykvm-resp.XXXXXX")"
+RESP_FILE="$(mktemp "${TMPDIR:-/tmp}/pikvm-resp.XXXXXX")"
 trap 'rm -f "$RESP_FILE"' EXIT
 
 usage() {
@@ -35,8 +35,8 @@ Global options (before the command):
 
 Base URL / credential resolution (first match wins per value):
   1. --base-url / --user / --password flags
-  2. \$PYKVM_URL / \$PYKVM_USER / \$PYKVM_PASSWORD environment variables
-  3. pykvm.local in the skill dir (or ~/.config/pykvm/endpoint)
+  2. \$PIKVM_URL / \$PIKVM_USER / \$PIKVM_PASSWORD environment variables
+  3. pikvm.local in the skill dir (or ~/.config/pikvm/endpoint)
 
 Commands:
   info                          GET  /api/info        (KVM/system info)
@@ -95,22 +95,22 @@ config_get() {
 }
 
 CONFIG_FILE=""
-for cand in "$SKILL_DIR/pykvm.local" "$SCRIPT_DIR/pykvm.local" "${HOME:-/nonexistent}/.config/pykvm/endpoint"; do
+for cand in "$SKILL_DIR/pikvm.local" "$SCRIPT_DIR/pikvm.local" "${HOME:-/nonexistent}/.config/pikvm/endpoint"; do
   [[ -f "$cand" ]] && { CONFIG_FILE="$cand"; break; }
 done
 
-if [[ -z "$BASE_URL" && -n "${PYKVM_URL:-}" ]]; then BASE_URL="$PYKVM_URL"; fi
-if [[ -z "$USER_NAME" && -n "${PYKVM_USER:-}" ]]; then USER_NAME="$PYKVM_USER"; fi
-if [[ -z "$PASSWORD" && -n "${PYKVM_PASSWORD:-}" ]]; then PASSWORD="$PYKVM_PASSWORD"; fi
-case "${PYKVM_INSECURE:-}" in true|1|yes|on) INSECURE=1 ;; esac
-if [[ -z "$CA_BUNDLE" && -n "${PYKVM_CA:-}" ]]; then CA_BUNDLE="$PYKVM_CA"; fi
+if [[ -z "$BASE_URL" && -n "${PIKVM_URL:-}" ]]; then BASE_URL="$PIKVM_URL"; fi
+if [[ -z "$USER_NAME" && -n "${PIKVM_USER:-}" ]]; then USER_NAME="$PIKVM_USER"; fi
+if [[ -z "$PASSWORD" && -n "${PIKVM_PASSWORD:-}" ]]; then PASSWORD="$PIKVM_PASSWORD"; fi
+case "${PIKVM_INSECURE:-}" in true|1|yes|on) INSECURE=1 ;; esac
+if [[ -z "$CA_BUNDLE" && -n "${PIKVM_CA:-}" ]]; then CA_BUNDLE="$PIKVM_CA"; fi
 
 if [[ -n "$CONFIG_FILE" ]]; then
-  [[ -n "$BASE_URL" ]]  || BASE_URL="$(config_get "$CONFIG_FILE" PYKVM_URL || true)"
-  [[ -n "$USER_NAME" ]] || USER_NAME="$(config_get "$CONFIG_FILE" PYKVM_USER || true)"
-  [[ -n "$PASSWORD" ]]  || PASSWORD="$(config_get "$CONFIG_FILE" PYKVM_PASSWORD || true)"
-  [[ -n "$CA_BUNDLE" ]] || CA_BUNDLE="$(config_get "$CONFIG_FILE" PYKVM_CA || true)"
-  case "$(config_get "$CONFIG_FILE" PYKVM_INSECURE || true)" in true|1|yes|on) INSECURE=1 ;; esac
+  [[ -n "$BASE_URL" ]]  || BASE_URL="$(config_get "$CONFIG_FILE" PIKVM_URL || true)"
+  [[ -n "$USER_NAME" ]] || USER_NAME="$(config_get "$CONFIG_FILE" PIKVM_USER || true)"
+  [[ -n "$PASSWORD" ]]  || PASSWORD="$(config_get "$CONFIG_FILE" PIKVM_PASSWORD || true)"
+  [[ -n "$CA_BUNDLE" ]] || CA_BUNDLE="$(config_get "$CONFIG_FILE" PIKVM_CA || true)"
+  case "$(config_get "$CONFIG_FILE" PIKVM_INSECURE || true)" in true|1|yes|on) INSECURE=1 ;; esac
 fi
 
 if [[ -z "$BASE_URL" ]]; then
@@ -119,14 +119,14 @@ error: no KVM base URL configured.
 
 Configure one of (first match wins):
   1. pass --base-url http(s)://your-kvm
-  2. export PYKVM_URL=http(s)://your-kvm
-  3. cp pykvm.example pykvm.local   (in the skill dir, then edit)
-  4. create ~/.config/pykvm/endpoint
+  2. export PIKVM_URL=http(s)://your-kvm
+  3. cp pikvm.example pikvm.local   (in the skill dir, then edit)
+  4. create ~/.config/pikvm/endpoint
 EOF
   exit 3
 fi
 if [[ -z "$USER_NAME" || -z "$PASSWORD" ]]; then
-  die "username and password are required (use --user/--password, PYKVM_USER/PYKVM_PASSWORD, or pykvm.local) (see --help)" 3
+  die "username and password are required (use --user/--password, PIKVM_USER/PIKVM_PASSWORD, or pikvm.local) (see --help)" 3
 fi
 case "$BASE_URL" in
   http://*|https://*) ;;
@@ -163,7 +163,7 @@ do_request() {
   local url="${BASE_URL}${path}"
   [[ -n "$query" ]] && url="${url}?${query}"
   CURL_ARGS=()
-  CURL_ARGS+=(-sS --max-time "$TIMEOUT" -A 'agent-skill-pykvm-rest-api/1.0' -o "$RESP_FILE" -w '%{http_code} %{content_type}')
+  CURL_ARGS+=(-sS --max-time "$TIMEOUT" -A 'agent-skill-pikvm-rest-api/1.0' -o "$RESP_FILE" -w '%{http_code} %{content_type}')
   auth_curl_args
   local meta
   if ! meta="$(curl -X "$method" "${CURL_ARGS[@]}" "$@" "$url" 2>&1)"; then
@@ -240,9 +240,9 @@ case "$COMMAND" in
 
   snapshot)
     out="${1:-}"
-    [[ -n "$out" ]] || out="$(mktemp "${TMPDIR:-/tmp}/pykvm-snap.XXXXXX").jpg"
+    [[ -n "$out" ]] || out="$(mktemp "${TMPDIR:-/tmp}/pikvm-snap.XXXXXX").jpg"
     CURL_ARGS=()
-    CURL_ARGS+=(-sS --max-time "$TIMEOUT" -A 'agent-skill-pykvm-rest-api/1.0' -o "$out" -w '%{http_code} %{content_type}')
+    CURL_ARGS+=(-sS --max-time "$TIMEOUT" -A 'agent-skill-pikvm-rest-api/1.0' -o "$out" -w '%{http_code} %{content_type}')
     auth_curl_args
     if ! meta="$(curl -X GET "${CURL_ARGS[@]}" "${BASE_URL}/api/streamer/snapshot" 2>&1)"; then
       die "snapshot request failed (KVM down or timeout after ${TIMEOUT}s): $meta" 4
