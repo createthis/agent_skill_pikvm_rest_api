@@ -25,6 +25,8 @@ Examples
   kvmcoords.py snap.jpg 75 42
   # fractional coordinates (7.8% from left, 3.3% from top)
   kvmcoords.py snap.jpg --frac 0.078 0.033
+  # explicit frame dims instead of an image file
+  kvmcoords.py 118 95 --width 1920 --height 1200
   # inverse: what pixel does KVMD (205,437) land on? (verify a mis-click)
   kvmcoords.py snap.jpg --from 205 437
 
@@ -104,8 +106,22 @@ def main():
     ap.add_argument("--json", action="store_true", help="JSON output")
     a = ap.parse_args()
 
+    # Disambiguate the no-image call: `kvmcoords.py 118 95 --width 1920 --height 1200`
+    # makes argparse assign image=118, x=95, y=None. Detect the numeric "image"
+    # and shift when the user clearly intended (x, y) with explicit dims.
+    if a.y is None and a.width is not None and a.height is not None:
+        try:
+            float(a.image)
+        except (TypeError, ValueError):
+            pass
+        else:
+            a.y = a.x
+            a.x = a.image
+            a.image = None
+
     if a.x is None or a.y is None:
         ap.error("x and y are required")
+    a.x, a.y = float(a.x), float(a.y)
 
     # Resolve frame dimensions: explicit flags win, else read from the image.
     w, h = a.width, a.height

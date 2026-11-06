@@ -170,6 +170,6 @@ Goal: click a window's close button, on a 1920×1200 capture.
    `zoom.py screen.jpg close.png --box 100 78 90 34 --scale 6`
 3. View `close.png`; the red close button center sits ~18px right and ~17px down
    from the box origin → pixel (118, 95).
-4. `kvmcoords.py screen.jpg 118 95` → `move −13025 −26364`
-5. `move −13025 −26364` → `sleep 1` → `click left`
+4. `kvmcoords.py screen.jpg 118 95` → `move −28740 −27580`
+5. `move −28740 −27580` → `sleep 1` → `click left`
 6. `snapshot after.jpg` → confirm the window is gone.
