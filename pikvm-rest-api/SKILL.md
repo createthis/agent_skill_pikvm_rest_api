@@ -11,6 +11,8 @@ metadata:
 
 Drive a hardware KVM (PiKVM Mini 4 / any KVMD-based device) from the command line: inspect the KVM and the machine behind it, send real keyboard/mouse input, type text, capture the screen, and control ATX power. This skill wraps the KVMD HTTP REST API with a zero-dependency bash client so an agent can operate the target machine without a browser.
 
+*(For a human-readable walkthrough of this skill's step-by-step behavior — with figures — see the repository root `README.md`; it is not needed to use this skill.)*
+
 ## Endpoint & credential resolution
 
 Nothing is hardcoded. The base URL, username, and password are resolved at runtime, first match wins per value:

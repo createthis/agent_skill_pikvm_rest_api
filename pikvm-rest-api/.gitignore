@@ -3,3 +3,6 @@
 # protects a local config even when the parent repo's .gitignore is not copied.
 /pikvm.local
 /scripts/pikvm.local
+# Python bytecode artifacts (from running/testing the helper scripts)
+__pycache__/
+*.pyc
