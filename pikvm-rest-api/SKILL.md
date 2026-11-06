@@ -1,10 +1,10 @@
 ---
 name: pikvm-rest-api
 description: "Control a PiKVM / KVMD (PiKVM Mini) hardware KVM over its REST API — read system/power state, send keyboard and mouse input, type text, take screen snapshots, and control ATX power. Use when a task needs to drive a remote machine through a PiKVM: typing into a target machine, clicking its screen, checking its power or health, grabbing a screen capture, or recovering a locked/unresponsive machine by sending input or power-cycling it. Resolves the KVM's base URL, username, and password at runtime from environment variables or a local config file; nothing is hardcoded in the skill."
-compatibility: "Requires bash and curl (and ideally jq, for pretty output) and network access to a PiKVM/KVMD instance. No other dependencies."
+compatibility: "Requires bash + curl (and ideally jq) and network access to a PiKVM/KVMD instance. Optional helpers: python3 (scripts/kvmcoords.py) and Pillow (scripts/zoom.py) for GUI click navigation. Core API client is zero-dependency."
 metadata:
   author: createthis
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PiKVM / KVMD REST API control
@@ -53,6 +53,17 @@ scripts/pikvm.sh snapshot /tmp/screen.jpg            # JPEG of the target screen
 scripts/pikvm.sh raw POST /api/hid/reset             # any method + path + query params
 ```
 
+**Click-navigation helpers** (for driving the target's GUI — see [references/NAVIGATION.md](references/NAVIGATION.md)):
+
+```bash
+# pixel -> KVMD move coords (auto-reads frame size from the snapshot; stdlib only)
+python3 scripts/kvmcoords.py /tmp/screen.jpg 75 42     # -> "move -30206 -30474"
+python3 scripts/kvmcoords.py /tmp/screen.jpg --from 205 437   # reverse: pixel
+
+# crop + upscale a snapshot region so small targets are readable (needs Pillow)
+python3 scripts/zoom.py /tmp/screen.jpg out.png --box 890 590 150 45 --scale 5
+```
+
 Override endpoint/creds for a one-off call:
 
 ```bash
@@ -67,7 +78,9 @@ JSON endpoints print to stdout pretty-printed (when `jq` is available); confirma
 - **The API uses query params, not a form body.** e.g. `POST /api/hid/events/send_key?key=Escape`, `POST /api/hid/events/send_shortcut?keys=MetaLeft,KeyA`. The only endpoint that takes a body is `POST /api/hid/print` (raw text, with a `?limit=` cap). The client handles this; use `raw` if you hand-roll a request and it 400s.
 - **Key names are the KVMD web keymap, not evdev/X11 names.** `KeyA`…`KeyZ`, `Digit1`…`Digit0`, `Enter`, `Escape`, `Tab`, `Space`, `F1`–`F24`, `MetaLeft`/`MetaRight` (⌘/Super), `ControlLeft`/`ControlRight`, `AltLeft`/`AltRight` (⌥/Option), `ShiftLeft`/`ShiftRight`, `NumpadEnter`, `ArrowUp`… etc. A full table is in [references/KEYMAP.md](references/KEYMAP.md). evdev-style names like `Super_L`, `Meta_L`, or `KEY_A` are **rejected** with a `ValidatorError`.
 - **Shortcuts need modifier+key, comma-joined.** `shortcut MetaLeft KeyV` = ⌘V. Order is press-first, release-reverse, so it reads as a real chord.
-- **Mouse is absolute on this class of device, but `move` takes native KVMD coordinates, not screen pixels.** `move X Y` forwards to `POST /api/hid/events/send_mouse_move?to_x=X&to_y=Y`, which uses a center-origin coordinate space: `(0,0)` is the screen center and X/Y range over roughly `−32768..32767` (KVMD remaps that range onto the device's full width/height). It requires absolute-mouse mode (`hid` → `mouse.absolute`). So `move 512 384` does **not** mean pixel (512,384) in a screenshot. To click a location identified from a captured frame, convert the pixel to a fraction of the full frame width/height (0 = left/top edge, 1 = right/bottom edge), center it, then scale over the full range: `to_x = round((frac_x − 0.5) * 65536)`, `to_y = round((frac_y − 0.5) * 65536)` (e.g. a pixel at 25% width = 25% left of center → `to_x = −16384`; at the right edge → `to_x ≈ +32767`). `wheel` deltas are signed (positive = up/right).
+- **Mouse is absolute, but `move` takes native KVMD coordinates, not screen pixels.** `move X Y` forwards to `POST /api/hid/events/send_mouse_move?to_x=X&to_y=Y`, a center-origin space: `(0,0)` = screen center, X/Y over roughly `−32768..32767`, remapped onto the full display. It requires absolute-mouse mode (`hid` → `mouse.absolute`). So `move 512 384` is **not** pixel (512,384). To click a point read off a snapshot: `to_x = round((px/W − 0.5)·65536)`, `to_y = round((py/H − 0.5)·65536)`. **Use `scripts/kvmcoords.py`** (auto-reads W/H from the snapshot) instead of doing this by hand. `wheel` deltas are signed (positive = up/right). The full click/type/read-screen workflow — fresh snapshot → zoom-measure → coords → click → verify — is in [references/NAVIGATION.md](references/NAVIGATION.md).
+- **`power` can be wrong about whether the target is on.** On some setups the ATX cable is not wired, so `power` reports the LED off and no actions even though the machine is running. **Treat a `snapshot` as the ground truth** for the target's state, not `power`.
+- **The target OS auto-locks after idle.** If a task has long read/write pauses, the desktop may lock (a lock/login screen appears in the snapshot). **Stop and tell the user; do not try to unlock it** — you generally lack the login credential, and the locked state is the safe one.
 - **The video stream may be offline → `snapshot` 503s.** `/api/streamer/snapshot` returns `UnavailableError` (HTTP 503) when the streamer is not running (no active viewer, or the target display is asleep). Input and state endpoints still work. To recover: connect a viewer once (the PiKVM web UI) to wake the stream, ensure the target's display is on, then retry. `--timeout` up to ~60s helps on a busy Pi-based KVM.
 - **Pi-based KVMs (CM4/CM5) are sometimes slow.** A PiKVM Mini can intermittently time out on `/api/hid/*` under load. The default 30s timeout is usually fine; bump it with `--timeout 60` if you see curl error 28.
 - **Read state before you act.** `power` tells you if the machine is on (`leds.power`) and which ATX actions are enabled (`acts`); `hid` tells you keyboard/mouse are online before you send input. `info` confirms you reached the right KVM (check `system.kvmd.version` and `hw.platform.model`).

@@ -27,9 +27,12 @@ pikvm-rest-api/
 ├── SKILL.md              # the skill (frontmatter + endpoint resolution + field notes)
 ├── pikvm.example         # committed config template (copy to pikvm.local)
 ├── scripts/
-│   └── pikvm.sh          # zero-dependency bash + curl KVMD REST API client
+│   ├── pikvm.sh          # zero-dependency bash + curl KVMD REST API client
+│   ├── kvmcoords.py      # pixel -> KVMD mouse coords (stdlib python, no deps)
+│   └── zoom.py           # crop + upscale a snapshot region (needs Pillow)
 └── references/
-    └── KEYMAP.md         # full table of accepted key names (KVMD web keymap)
+    ├── KEYMAP.md         # full table of accepted key names (KVMD web keymap)
+    └── NAVIGATION.md     # GUI workflow: snapshot -> zoom -> coords -> click -> verify
 ```
 
 **How it activates:** the description is written so the agent invokes the skill whenever a task needs to drive a remote machine through a PiKVM — typing into it, clicking its screen, checking power/health, grabbing a screen capture, or power-cycling it. This is description-based model invocation per the Agent Skills spec, so the skill stays portable to any spec-compliant client. (OpenHands `triggers:` frontmatter is intentionally not used — it isn't part of the spec.)
@@ -72,6 +75,7 @@ cp pikvm-rest-api/pikvm.example pikvm-rest-api/pikvm.local
 - Input: `key`, `shortcut`, `type`, `click`, `move`, `wheel` — real HID events on the target. Key names are the KVMD *web* keymap (`KeyA`, `MetaLeft`, `Digit1`, …), not evdev or X11 names — see `references/KEYMAP.md`.
 - Power: `power-on`, `power-off`, `power-reset` — confirm intent first; these are destructive.
 - Screen: `snapshot /tmp/screen.jpg` — JPEG of the target; 503s while the video stream is offline (open the PiKVM web UI once to wake it).
+- Click the GUI: fresh `snapshot` → zoom-measure a target → `scripts/kvmcoords.py IMG px py` for `move` coords → `move`/`click` → verify. Full workflow + pitfalls in `references/NAVIGATION.md`.
 - Escape hatch: `raw METHOD PATH K=V ...` for any KVMD endpoint. The API uses **query params**, not form bodies (except `POST /api/hid/print`).
 - **No default host.** If nothing is configured, say so and ask for the KVM's address and credentials — never assume a host.
 
