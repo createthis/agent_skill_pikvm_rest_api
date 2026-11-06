@@ -165,6 +165,36 @@ cp pikvm-rest-api/pikvm.example pikvm-rest-api/pikvm.local
 # edit PIKVM_URL / PIKVM_USER / PIKVM_PASSWORD
 ```
 
+## Testing the skill
+
+The scripts ship with a test suite in [`pikvm-rest-api/tests/`](pikvm-rest-api/tests/). It runs
+**entirely offline** — no real KVM, no network, no credentials:
+
+- **Python unit tests** (`test_kvmcoords.py`, `test_zoom.py`) exercise the coordinate math,
+  fraction/reverse conversions, image-header size detection, crop geometry, scaling, and error
+  paths directly.
+- **Bash integration tests** (`test_pikvm.sh`) drive `pikvm.sh` against a local
+  [mock KVMD server](pikvm-rest-api/tests/mock_kvm_server.py) (a stdlib-only Python HTTP server
+  that speaks just enough of the KVMD API and logs every request). They cover config resolution
+  and precedence, exit codes (2 usage / 3 not-configured / 4 HTTP), Basic auth, and the exact
+  method + path + query each command sends. Your own `PIKVM_*` environment variables are
+  ignored — the bash tests run in a scrubbed environment with a fake `$HOME`.
+
+Run everything from the repository root:
+
+```bash
+bash pikvm-rest-api/tests/run_tests.sh
+```
+
+…or just one suite: `bash pikvm-rest-api/tests/run_tests.sh python` / `... bash`.
+
+Requirements: `bash`, `curl`, `python3`. `pillow` is used by the Python tests to build
+image fixtures (`python -m pip install pillow`); without it, only the image-based test
+cases are skipped, the rest still run. `jq` is optional and not required by the tests.
+Both suites exit non-zero on any failure, so they can be used verbatim as a CI job, and
+the runner works from any directory. Expect the bash suite to take a few seconds (it
+spins up the mock server and includes one deliberate ~1s timeout test).
+
 ## How the agent side of the docs is organized
 
 The skill follows the Agent Skills spec's [progressive disclosure](https://agentskills.io/specification#progressive-disclosure)
@@ -227,7 +257,9 @@ independent peer review still recommended before publication).
 │   ├── SKILL.md            #   skill definition: frontmatter + agent instructions
 │   ├── pikvm.example       #   config template (copy to pikvm.local, gitignored)
 │   ├── scripts/            #   pikvm.sh, kvmcoords.py, zoom.py
-│   └── references/         #   KEYMAP.md, NAVIGATION.md (loaded on demand)
+│   ├── references/         #   KEYMAP.md, NAVIGATION.md (loaded on demand)
+│   └── tests/              #   offline test suite: run_tests.sh, mock KVMD server,
+│                           #   unit + integration tests (see "Testing the skill")
 └── docs/                   # this page's supporting material
     ├── figures/            #   the eight step visuals (PNG + SVG), committed
     ├── generate_pikvm_diagrams.py

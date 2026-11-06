@@ -59,7 +59,7 @@ scripts/pikvm.sh raw POST /api/hid/reset             # any method + path + query
 
 ```bash
 # pixel -> KVMD move coords (auto-reads frame size from the snapshot; stdlib only)
-python3 scripts/kvmcoords.py /tmp/screen.jpg 75 42     # -> "move -30206 -30474"
+python3 scripts/kvmcoords.py /tmp/screen.jpg 75 42     # -> "move -30208 -30474"
 python3 scripts/kvmcoords.py /tmp/screen.jpg --from 205 437   # reverse: pixel
 
 # crop + upscale a snapshot region so small targets are readable (needs Pillow)

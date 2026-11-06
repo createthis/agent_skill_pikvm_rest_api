@@ -50,7 +50,7 @@ where `W×H` is the snapshot size. **You almost never do this by hand** — use
 ```bash
 # pixel (75,42) from a snapshot -> "move" args (auto W/H from the file)
 python3 scripts/kvmcoords.py snap.jpg 75 42
-#   ->  move -30206 -30474   # pixel (75, 42) of 1920x1200
+#   ->  move -30208 -30474   # pixel (75, 42) of 1920x1200
 
 # fractional target (7.8% from left, 3.3% from top)
 python3 scripts/kvmcoords.py snap.jpg --frac 0.078 0.033
